@@ -477,7 +477,6 @@
             <div class="mural-side">
                 <div class="mural-header">
                     <h3>Mural da Comunidade</h3>
-                    <i data-lucide="history" style="width: 18px; color: var(--text-secondary);"></i>
                 </div>
                 <div class="mural-content" id="muralContent">
                     <div class="empty-state">Carregando histórico...</div>
@@ -495,7 +494,7 @@
     <script>
         lucide.createIcons();
 
-        const API = "http://localhost:3000";
+        const API = "/api";
 
         async function enviarSugestao() {
             const nomeInput = document.getElementById("nome");
@@ -540,9 +539,19 @@
 
         async function carregarSugestoes() {
             try {
+                console.log("Iniciando carregamento de sugestões...");
                 const res = await fetch(API + "/sugestoes");
+                console.log("Status da resposta API:", res.status);
+                
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error("Erro na API:", errorData);
+                    throw new Error(`Erro ${res.status}: ${errorData.error || 'Falha ao carregar'}`);
+                }
+
                 const dados = await res.json();
                 const mural = document.getElementById("muralContent");
+                console.log("Dados recebidos:", dados);
 
                 if (dados.length === 0) {
                     mural.innerHTML = '<div class="empty-state">O mural está vazio. Seja o primeiro a sugerir!</div>';
