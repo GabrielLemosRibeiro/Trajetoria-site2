@@ -265,6 +265,54 @@
             cursor: not-allowed;
         }
 
+        /* Delete Button */
+        .btn-delete {
+            background: none;
+            color: var(--text-secondary);
+            width: auto;
+            padding: 5px;
+            margin-top: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid transparent;
+            transition: var(--transition);
+        }
+
+        .btn-delete:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+            border-color: var(--primary);
+            transform: none;
+        }
+
+        .btn-history {
+            background: none;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            width: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-history:hover {
+            background: var(--bg-muted);
+            color: var(--secondary);
+        }
+
+        .btn-history.active {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+        }
+
         /* Mural Side */
         .mural-side {
             border: 1px solid var(--border);
@@ -343,6 +391,27 @@
             font-size: 14px;
             color: var(--text-main);
             line-height: 1.5;
+        }
+
+        .suggestion-card.deleted {
+            opacity: 0.6;
+            background: var(--bg-muted);
+            border-style: dashed;
+        }
+
+        .suggestion-card.deleted .card-text {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .badge-deleted {
+            background: #fed7d7;
+            color: #c53030;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+            font-weight: 700;
         }
 
         .empty-state {
@@ -476,7 +545,16 @@
             <!-- Mural -->
             <div class="mural-side">
                 <div class="mural-header">
-                    <h3>Mural da Comunidade</h3>
+                    <h3 id="muralTitle">Mural da Comunidade</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btnDeleteAll" class="btn-delete" style="border: 1px solid var(--border); margin-top: 0; padding: 8px 12px; display: none;" onclick="deletarTodasSugestoes()">
+                             <i data-lucide="trash-2" style="width:14px"></i> Limpar
+                        </button>
+                        <button id="btnHistory" class="btn-history" onclick="toggleHistory()">
+                            <i data-lucide="history"></i>
+                            <span>Histórico</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="mural-content" id="muralContent">
                     <div class="empty-state">Carregando histórico...</div>
@@ -537,10 +615,12 @@
             }
         }
 
+        let showingHistory = false;
+
         async function carregarSugestoes() {
             try {
                 console.log("Iniciando carregamento de sugestões...");
-                const res = await fetch(API + "/sugestoes");
+                const res = await fetch(API + `/sugestoes${showingHistory ? '?history=true' : ''}`);
                 console.log("Status da resposta API:", res.status);
                 
                 if (!res.ok) {
@@ -554,25 +634,94 @@
                 console.log("Dados recebidos:", dados);
 
                 if (dados.length === 0) {
-                    mural.innerHTML = '<div class="empty-state">O mural está vazio. Seja o primeiro a sugerir!</div>';
+                    mural.innerHTML = `<div class="empty-state">${showingHistory ? 'Nenhuma mensagem no histórico.' : 'O mural está vazio. Seja o primeiro a sugerir!'}</div>`;
                     return;
                 }
 
-                // Inverter para mostrar as mais recentes primeiro
-                const listaInvertida = [...dados].reverse();
-
-                mural.innerHTML = listaInvertida.map(item => `
-                    <div class="suggestion-card">
-                        <div class="card-user"><i data-lucide="user" style="width:12px"></i> ${item.nome}</div>
+                mural.innerHTML = dados.map(item => `
+                    <div class="suggestion-card ${item.isDeleted ? 'deleted' : ''}">
+                        <div class="card-user">
+                            <i data-lucide="user" style="width:12px"></i> ${item.nome}
+                            ${item.isDeleted ? '<span class="badge-deleted">Excluída</span>' : ''}
+                        </div>
                         <div class="card-text">${item.sugestao}</div>
+                        ${(!showingHistory && !item.isDeleted) ? `
+                            <button class="btn-delete" onclick="deletarSugestao(${item.id})">
+                                <i data-lucide="trash-2" style="width:14px"></i> Excluir
+                            </button>
+                        ` : ''}
                     </div>
                 `).join('');
+
+                // Mostrar/Esconder botão de excluir tudo
+                const btnDeleteAll = document.getElementById("btnDeleteAll");
+                if (!showingHistory && dados.some(d => !d.isDeleted)) {
+                    btnDeleteAll.style.display = 'flex';
+                } else {
+                    btnDeleteAll.style.display = 'none';
+                }
 
                 lucide.createIcons();
             } catch (error) {
                 console.error(error);
                 document.getElementById("muralContent").innerHTML = '<div class="empty-state">Não foi possível carregar o mural.</div>';
             }
+        }
+
+        async function deletarSugestao(id) {
+            if (!confirm("Tem certeza que deseja excluir esta mensagem?")) return;
+
+            try {
+                const response = await fetch(`${API}/sugestoes/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    await carregarSugestoes();
+                } else {
+                    alert("Erro ao excluir sugestão.");
+                }
+            } catch (error) {
+                console.error("Erro:", error);
+                alert("Erro de conexão ao excluir.");
+            }
+        }
+
+        async function deletarTodasSugestoes() {
+            if (!confirm("Tem certeza que deseja limpar todo o mural? Todas as mensagens serão movidas para o histórico.")) return;
+
+            try {
+                const response = await fetch(`${API}/sugestoes`, {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    await carregarSugestoes();
+                } else {
+                    alert("Erro ao limpar mural.");
+                }
+            } catch (error) {
+                console.error("Erro:", error);
+                alert("Erro de conexão ao limpar mural.");
+            }
+        }
+
+        function toggleHistory() {
+            showingHistory = !showingHistory;
+            const btn = document.getElementById("btnHistory");
+            const muralHeader = document.querySelector(".mural-header h3");
+            
+            if (showingHistory) {
+                btn.classList.add("active");
+                btn.querySelector("span").innerText = "Ver Mural";
+                muralHeader.innerText = "Histórico de Mensagens";
+            } else {
+                btn.classList.remove("active");
+                btn.querySelector("span").innerText = "Histórico";
+                muralHeader.innerText = "Mural da Comunidade";
+            }
+            
+            carregarSugestoes();
         }
 
         function showToast() {

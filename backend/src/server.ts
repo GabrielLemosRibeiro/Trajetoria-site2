@@ -18,24 +18,21 @@ app.use((req, res, next) => {
 
 app.use('/api/sugestoes', sugestoesRoutes);
 
-// Servir frontend apenas em desenvolvimento local
-if (process.env.NODE_ENV !== 'production') {
-  app.use(express.static(path.join(__dirname, '../../frontend')));
-}
+// Servir arquivos estáticos do frontend
+app.use(express.static(path.join(__dirname, '../../frontend')));
 
 app.get('/', (req, res) => {
-  if (process.env.NODE_ENV !== 'production') {
-    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
-  } else {
-    res.send('🚀 Servidor de Sugestões está rodando na porta 3000!');
-  }
+  res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' || process.env.LOCAL_TEST === 'true') {
   app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    if (process.env.NODE_ENV === 'production') {
+      console.log('--- MODO DE PRODUÇÃO SIMULADO ---');
+    }
   });
 }
 

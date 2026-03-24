@@ -8,7 +8,9 @@ datasource db {
 }
 
 model Sugestao {
-  id       Int    @id @default(autoincrement())
-  nome     String
-  sugestao String
+  id        Int      @id @default(autoincrement())
+  nome      String
+  sugestao  String
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

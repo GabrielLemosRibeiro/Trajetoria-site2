@@ -6,5 +6,7 @@ const sugestoesController = new SugestoesController();
 
 sugestoesRoutes.post('/', sugestoesController.create);
 sugestoesRoutes.get('/', sugestoesController.list);
+sugestoesRoutes.delete('/', sugestoesController.deleteAll);
+sugestoesRoutes.delete('/:id', sugestoesController.delete);
 
 export { sugestoesRoutes };
